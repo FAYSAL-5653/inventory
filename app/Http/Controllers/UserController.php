@@ -5,12 +5,50 @@ use App\Helper\JWTToken;
 use App\Mail\OTPmail;
 use App\Models\User;
 use Exception;
+use id;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\View\View;
 
 class UserController extends Controller
 {
+    /**
+     * Summary of UserRegistration
+     * @param \Illuminate\Http\Request $request
+     * @return mixed
+     */
+
+    //page call part
+    public function LoginPage(): View
+    {
+        return view('pages.auth.login-page');
+    }
+
+    public function RegistrationPage(): View
+    {
+        return view('pages.auth.registration-page');
+    }
+    public function SendOtpPage(): View
+    {
+        return view('pages.auth.send-otp-page');
+    }
+    public function VerifyOTPPage(): View
+    {
+        return view('pages.auth.verify-otp-page');
+    }
+
+    public function ResetPasswordPage(): View
+    {
+        return view('pages.auth.reset-pass-page');
+    }
+
+    public function ProfilePage(): View
+    {
+        return view('pages.dashboard.profile-page');
+    }
+
+    //logic part
     public function UserRegistration(Request $request)
     {
         try {
@@ -39,16 +77,16 @@ class UserController extends Controller
     {
         $count = User::where('email', '=', $request->input('email'))
             ->where('password', '=', $request->input('password'))
-            ->count();
+            ->select('id')->first();
 
-        if ($count == 1) {
+        if ($count !== null) {
 
-            $token = JWTToken::CreateToken($request->input('email'));
+            $token = JWTToken::CreateToken($request->input('email'), $count->id);
             return response()->json([
                 'status' => 'success',
                 'message' => 'User Login Successful',
-                'token' => $token,
-            ]);
+
+            ])->cookie('token', $token, 60 * 24 * 30);
         } else {
             return response()->json([
                 'status' => 'failed',
@@ -58,7 +96,6 @@ class UserController extends Controller
         }
 
     }
-
     public function SendOTPCode(Request $request)
     {
 
@@ -102,8 +139,9 @@ class UserController extends Controller
             return response()->json([
                 'status' => 'success',
                 'message' => ' OTP Code has been verified sucessfully !',
-                'token ' => $token,
-            ]);
+
+            ])->cookie('token', $token, 60 * 24 * 30);
+
         } else {
             return response()->json([
                 'status' => 'failed',
@@ -118,6 +156,49 @@ class UserController extends Controller
             $email = $request->header('email');
             $password = $request->input('password');
             User::where('email', '=', $email)->update(['password' => $password]);
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Request Successful',
+            ], 200);
+
+        } catch (Exception $exception) {
+            return response()->json([
+                'status' => 'fail',
+                'message' => 'Something Went Wrong',
+            ], 200);
+        }
+    }
+
+    public function UserLogout()
+    {
+        return redirect('/userLogin')->cookie('token', '', -1);
+    }
+
+    public function UserProfile(Request $request)
+    {
+        $email = $request->header('email');
+        $user = User::where('email', '=', $email)->first();
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Request Successful',
+            'data' => $user,
+        ], 200);
+
+    }
+    public function UpdateProfile(Request $request)
+    {
+        try {
+            $email = $request->header('email');
+            $firstName = $request->input('firstName');
+            $lastName = $request->input('lastName');
+            $mobile = $request->input('mobile');
+            $password = $request->input('password');
+            User::where('email', '=', $email)->update([
+                'firstName' => $firstName,
+                'lastName' => $lastName,
+                'mobile' => $mobile,
+                'password' => $password,
+            ]);
             return response()->json([
                 'status' => 'success',
                 'message' => 'Request Successful',
